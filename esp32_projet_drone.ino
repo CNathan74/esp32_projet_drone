@@ -10,6 +10,9 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <elapsedMillis.h>
+
+elapsedMillis TimerCompteurPrincipal;  
 
 // Replace with your network credentials
 const char* ssid = "PALM_Wifi";
@@ -107,40 +110,43 @@ void setup(){
 }
 
 void loop() {
-  stateBtnLaby_Z1.b_StateBtnLaby[0] = stateBtnLaby.b_StateBtnLaby[0];
-  stateBtnLaby_Z1.b_StateBtnLaby[1] = stateBtnLaby.b_StateBtnLaby[1];
-  stateBtnLaby_Z1.b_StateBtnLaby[2] = stateBtnLaby.b_StateBtnLaby[2];
-  stateBtnLaby_Z1.b_StateBtnLaby[3] = stateBtnLaby.b_StateBtnLaby[3];
-  ui_EtatBtn_Z1 = ui_EtatBtn;
-  ui_EtatBtn = tache_ConvertBtnState(stateBtnLaby.b_StateBtnLaby[0], stateBtnLaby.b_StateBtnLaby[1], stateBtnLaby.b_StateBtnLaby[2], stateBtnLaby.b_StateBtnLaby[3]);
-  //stateBtnLaby_Z1.ui_StateBtnLaby = stateBtnLaby.ui_StateBtnLaby;
-  stateBtnLaby.b_StateBtnLaby[0] = !digitalRead(btnGauche);
-  stateBtnLaby.b_StateBtnLaby[1] = !digitalRead(btnDroite);
-  stateBtnLaby.b_StateBtnLaby[2] = !digitalRead(btnAv);
-  stateBtnLaby.b_StateBtnLaby[3] = !digitalRead(btnAr);
-  //Serial.println(stateBtnLaby.ui_StateBtnLaby);
-
-  ws.cleanupClients();
-  /*String res = String(stateBtnLaby.b_StateBtnLaby[0]) + String(stateBtnLaby.b_StateBtnLaby[1]) + String(stateBtnLaby.b_StateBtnLaby[2]) + String(stateBtnLaby.b_StateBtnLaby[3]);
-  String res_Z1 = String(stateBtnLaby_Z1.b_StateBtnLaby[0]) + String(stateBtnLaby_Z1.b_StateBtnLaby[1]) + String(stateBtnLaby_Z1.b_StateBtnLaby[2]) + String(stateBtnLaby_Z1.b_StateBtnLaby[3]);
-  Serial.println(res);*/
-  /*if(stateBtnLaby_Z1.ui_StateBtnLaby != stateBtnLaby.ui_StateBtnLaby)
+  if (TimerCompteurPrincipal >= 100)      // toutes les 10ms
   {
-    String res = String(stateBtnLaby.b_StateBtnLaby[0]) + String(stateBtnLaby.b_StateBtnLaby[1]) + String(stateBtnLaby.b_StateBtnLaby[2]) + String(stateBtnLaby.b_StateBtnLaby[3]);
-    ws.textAll(res);
-  }*/
-  /*if(ui_EtatBtn_Z1 != ui_EtatBtn)
-  {
-    ws.textAll("LBR@" + String(ui_EtatBtn));
-  }*/
-
-  if(ui_EtatBtn != 0){
-    ws.textAll("LBR@" + String(ui_EtatBtn));
+    TimerCompteurPrincipal = TimerCompteurPrincipal - 100;
+    stateBtnLaby_Z1.b_StateBtnLaby[0] = stateBtnLaby.b_StateBtnLaby[0];
+    stateBtnLaby_Z1.b_StateBtnLaby[1] = stateBtnLaby.b_StateBtnLaby[1];
+    stateBtnLaby_Z1.b_StateBtnLaby[2] = stateBtnLaby.b_StateBtnLaby[2];
+    stateBtnLaby_Z1.b_StateBtnLaby[3] = stateBtnLaby.b_StateBtnLaby[3];
+    ui_EtatBtn_Z1 = ui_EtatBtn;
+    //stateBtnLaby_Z1.ui_StateBtnLaby = stateBtnLaby.ui_StateBtnLaby;
+    stateBtnLaby.b_StateBtnLaby[0] = !digitalRead(btnGauche);
+    stateBtnLaby.b_StateBtnLaby[1] = !digitalRead(btnDroite);
+    stateBtnLaby.b_StateBtnLaby[2] = !digitalRead(btnAv);
+    stateBtnLaby.b_StateBtnLaby[3] = !digitalRead(btnAr);
+    ui_EtatBtn = tache_ConvertBtnState(stateBtnLaby.b_StateBtnLaby[0], stateBtnLaby.b_StateBtnLaby[1], stateBtnLaby.b_StateBtnLaby[2], stateBtnLaby.b_StateBtnLaby[3]);
+    //Serial.println(stateBtnLaby.ui_StateBtnLaby);
+  
+    ws.cleanupClients();
+    /*String res = String(stateBtnLaby.b_StateBtnLaby[0]) + String(stateBtnLaby.b_StateBtnLaby[1]) + String(stateBtnLaby.b_StateBtnLaby[2]) + String(stateBtnLaby.b_StateBtnLaby[3]);
+    String res_Z1 = String(stateBtnLaby_Z1.b_StateBtnLaby[0]) + String(stateBtnLaby_Z1.b_StateBtnLaby[1]) + String(stateBtnLaby_Z1.b_StateBtnLaby[2]) + String(stateBtnLaby_Z1.b_StateBtnLaby[3]);
+    Serial.println(res);*/
+    /*if(stateBtnLaby_Z1.ui_StateBtnLaby != stateBtnLaby.ui_StateBtnLaby)
+    {
+      String res = String(stateBtnLaby.b_StateBtnLaby[0]) + String(stateBtnLaby.b_StateBtnLaby[1]) + String(stateBtnLaby.b_StateBtnLaby[2]) + String(stateBtnLaby.b_StateBtnLaby[3]);
+      ws.textAll(res);
+    }*/
+    /*if(ui_EtatBtn_Z1 != ui_EtatBtn)
+    {
+      ws.textAll("LBR@" + String(ui_EtatBtn));
+    }*/
+  
+    if(ui_EtatBtn != 0){
+      ws.textAll("LBR@" + String(ui_EtatBtn));
+    }
+    else if(ui_EtatBtn_Z1 != ui_EtatBtn)
+    {
+      ws.textAll("LBR@" + String(ui_EtatBtn));
+    }
   }
-  else if(ui_EtatBtn_Z1 != ui_EtatBtn)
-  {
-    ws.textAll("LBR@" + String(ui_EtatBtn));
-  }
-  delay(100);
 
 }
