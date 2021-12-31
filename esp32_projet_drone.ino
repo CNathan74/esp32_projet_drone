@@ -28,9 +28,18 @@ boolean b_BtnDejaAppui_LBR[3] = {false, false, false};
 //boolean b_BtnDejaAppui_LBR_Z1[3] = {false; false; false};
 const uint8_t ui_PinBtn_LBR[3] = {LBR_BTN_1, LBR_BTN_2, LBR_BTN_3};
 
+uint8_t ui_NbBtnDejaAppui_DRT = 0;
+uint8_t ui_NbBtnDejaAppui_DRT_Z1 = 0;
+boolean b_BtnDejaAppui_DRT[3] = {false, false, false};
+
 uint16_t ui_NbTour_PMP = 0;
 boolean b_EtatAnemo_PMP = false;
 boolean b_EtatAnemo_PMP_Z1 = false;
+
+uint8_t ui_EtatBtn_DRT_CTRL = 0;
+uint8_t ui_EtatBtn_DRT_CTRL_Z1 = 0;
+
+
 
 StateBtnLaby stateBtnLaby;
 StateBtnLaby stateBtnLaby_Z1;
@@ -40,6 +49,7 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, uint32_t client_id) {
+  int i;
   AwsFrameInfo *info = (AwsFrameInfo*)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     String d = "";
@@ -49,27 +59,71 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, uint32_t clien
     }
     Serial.println(d);
     if(d.indexOf("@") != -1){
-		String srv = d.substring(0, d.indexOf("@"));
-		if(srv == "CMD")
-		{
-			String cmd = d.substring(d.indexOf("@") + 1, len);
-			Serial.println(cmd);
-			if(cmd == "RAZ")
-			{
-				tache_RAZ();
-				//ws.text(client_id, "RAZ");
-				ws.textAll("RAZ");
-			}
-			else
-			{
-				ws.text(client_id, "Cmd inconnue");
-			}
-
-		}
-		else
-		{
-			ws.text(client_id, "Code service inconnu");
-		}
+  		String srv = d.substring(0, d.indexOf("@"));
+  		if(srv == "CMD")
+  		{
+  			String cmd = d.substring(d.indexOf("@") + 1, len);
+  			Serial.println(cmd);
+  			if(cmd == "RAZ")
+  			{
+  				tache_RAZ();
+  				//ws.text(client_id, "RAZ");
+  				ws.textAll("RAZ");
+  			}
+  			else
+  			{
+  				ws.text(client_id, "Cmd inconnue");
+  			}
+  
+  		}
+     else if(srv = "IO")
+     {
+        String io = d.substring(d.indexOf("@") + 1, d.indexOf(":"));
+        String value = d.substring(d.indexOf(":") + 1, len);
+        boolean temp;
+        Serial.print(io);
+        Serial.println(value);
+        if(io == "DRT_INFO")
+        {
+           ui_NbBtnDejaAppui_DRT_Z1 = ui_NbBtnDejaAppui_DRT;
+            for(i = 0; i < 3; i++)
+            {
+              temp = (boolean)value.substring(i, i + 1).toInt();
+              if((b_BtnDejaAppui_DRT[i] == false) && (temp == true))
+              {
+                if(i > 0)
+                {
+                  if(b_BtnDejaAppui_DRT[i - 1] == true)
+                  {
+                    b_BtnDejaAppui_DRT[i] = true;
+                    ui_NbBtnDejaAppui_DRT++;
+                  }
+                }
+                else
+                {
+                    b_BtnDejaAppui_DRT[i] = true;
+                    ui_NbBtnDejaAppui_DRT++;
+                }  
+              }
+            }
+        }
+        if(io == "DRT_CTRL")
+        {
+          ui_EtatBtn_DRT_CTRL = value.toInt();
+          if(ui_EtatBtn_DRT_CTRL_Z1 != ui_EtatBtn_DRT_CTRL)
+          {
+            ws.textAll("DRT@CTRL:" + String(ui_EtatBtn_DRT_CTRL));
+          }
+          else if(ui_EtatBtn_DRT_CTRL != 0)
+          {
+            ws.textAll("DRT@CTRL:" + String(ui_EtatBtn_DRT_CTRL));
+          }
+        }
+     }
+  		else
+  		{
+  			ws.text(client_id, "Code service inconnu");
+  		}
     }
 
 
@@ -102,7 +156,14 @@ void initWebSocket() {
 }
 
 void tache_RAZ() {
+  uint8_t i;
   ui_NbBtnDejaAppui_LBR = 0;
+  ui_NbBtnDejaAppui_DRT = 0;
+  for(i = 0; i < 3; i++)
+  {
+    b_BtnDejaAppui_LBR[i] = false;
+    b_BtnDejaAppui_DRT[i] = false;
+  }
   ui_NbTour_PMP = 0;
 }
 
@@ -157,12 +218,10 @@ void setup(){
   pinMode(LBR_BTN_DROITE, INPUT_PULLUP);
   pinMode(LBR_BTN_AV, INPUT_PULLUP);
   pinMode(LBR_BTN_AR, INPUT_PULLUP);
-
+    
   for(i = 0; i < 3; i++)
-  {
-    pinMode(ui_PinBtn_LBR[i], INPUT_PULLUP);
-  }
-
+  { pinMode(ui_PinBtn_LBR[i], INPUT_PULLUP);  }
+  
   pinMode(PMP_ANEMO, INPUT);
 
 
@@ -185,21 +244,12 @@ void loop() {
   if (TimerCompteurPrincipal >= FREQUENCE_TIMER_PRINCIPAL)      // toutes les 10ms
   {
     TimerCompteurPrincipal = TimerCompteurPrincipal - FREQUENCE_TIMER_PRINCIPAL;
-
-    /*
-    stateBtnLaby_Z1.b_StateBtnLaby[0] = stateBtnLaby.b_StateBtnLaby[0];
-    stateBtnLaby_Z1.b_StateBtnLaby[1] = stateBtnLaby.b_StateBtnLaby[1];
-    stateBtnLaby_Z1.b_StateBtnLaby[2] = stateBtnLaby.b_StateBtnLaby[2];
-    stateBtnLaby_Z1.b_StateBtnLaby[3] = stateBtnLaby.b_StateBtnLaby[3];
-    
-    //stateBtnLaby_Z1.ui_StateBtnLaby = stateBtnLaby.ui_StateBtnLaby;
-    stateBtnLaby.b_StateBtnLaby[0] = !digitalRead(LBR_BTN_GAUCHE);
-    stateBtnLaby.b_StateBtnLaby[1] = !digitalRead(LBR_BTN_DROITE);
-    stateBtnLaby.b_StateBtnLaby[2] = !digitalRead(LBR_BTN_AV);
-    stateBtnLaby.b_StateBtnLaby[3] = !digitalRead(LBR_BTN_AR);
-    */
     ui_EtatBtn_LBR_CTRL_Z1 = ui_EtatBtn_LBR_CTRL;
     ui_EtatBtn_LBR_CTRL = tache_ConvertBtnState_4(!digitalRead(LBR_BTN_GAUCHE), !digitalRead(LBR_BTN_DROITE), !digitalRead(LBR_BTN_AV), !digitalRead(LBR_BTN_AR));
+
+   
+
+    
 
     for(i = 0; i < 3; i++)
     {
@@ -223,40 +273,42 @@ void loop() {
     }
     //Serial.println(stateBtnLaby.ui_StateBtnLaby);
   
-    ws.cleanupClients();
-    /*String res = String(stateBtnLaby.b_StateBtnLaby[0]) + String(stateBtnLaby.b_StateBtnLaby[1]) + String(stateBtnLaby.b_StateBtnLaby[2]) + String(stateBtnLaby.b_StateBtnLaby[3]);
-    String res_Z1 = String(stateBtnLaby_Z1.b_StateBtnLaby[0]) + String(stateBtnLaby_Z1.b_StateBtnLaby[1]) + String(stateBtnLaby_Z1.b_StateBtnLaby[2]) + String(stateBtnLaby_Z1.b_StateBtnLaby[3]);
-    Serial.println(res);*/
-    /*if(stateBtnLaby_Z1.ui_StateBtnLaby != stateBtnLaby.ui_StateBtnLaby)
-    {
-      String res = String(stateBtnLaby.b_StateBtnLaby[0]) + String(stateBtnLaby.b_StateBtnLaby[1]) + String(stateBtnLaby.b_StateBtnLaby[2]) + String(stateBtnLaby.b_StateBtnLaby[3]);
-      ws.textAll(res);
-    }*/
-    /*if(ui_EtatBtn_Z1 != ui_EtatBtn)
-    {
-      ws.textAll("LBR@" + String(ui_EtatBtn));
-    }
-  
-    if(ui_EtatBtn != 0){
-      ws.textAll("LBR@" + String(ui_EtatBtn));
-    }
-    else if(ui_EtatBtn_Z1 != ui_EtatBtn)
-    {
-      ws.textAll("LBR@" + String(ui_EtatBtn));
-    }
-
-    */
+    ws.cleanupClients();    
     if(ui_Sequence == 0)
     {
-      ws.textAll("LBR@CTRL:" + String(ui_EtatBtn_LBR_CTRL));
+      //ws.textAll("LBR@CTRL:" + String(ui_EtatBtn_LBR_CTRL));
     }
-    if(ui_Sequence == (NB_PERIODE_SEQUENCEUR / 3))
+    if(ui_Sequence == (NB_PERIODE_SEQUENCEUR / 6))
     {
-      ws.textAll("LBR@INFO:" + String(ui_NbBtnDejaAppui_LBR));
+      //ws.textAll("LBR@INFO:" + String(ui_NbBtnDejaAppui_LBR));
     }
-    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 3) * 2))
+    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 2))
     {
-      ws.textAll("PMP@INFO:" + String(ui_NbTour_PMP));
+      //ws.textAll("PMP@INFO:" + String(ui_NbTour_PMP));
+    }
+    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 3))
+    {
+      ui_EtatBtn_DRT_CTRL_Z1 = ui_EtatBtn_DRT_CTRL;
+      if(ui_EtatBtn_DRT_CTRL_Z1 != ui_EtatBtn_DRT_CTRL)
+      {
+        ws.textAll("DRT@CTRL:" + String(ui_EtatBtn_DRT_CTRL));
+      }
+      else if(ui_EtatBtn_DRT_CTRL != 0)
+      {
+        ws.textAll("DRT@CTRL:" + String(ui_EtatBtn_DRT_CTRL));
+      }
+    }
+    
+    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 4))
+    {
+      if(ui_NbBtnDejaAppui_DRT_Z1 != ui_NbBtnDejaAppui_DRT)
+      {
+        ws.textAll("DRT@INFO:" + String(ui_NbBtnDejaAppui_DRT));
+      }
+    }
+    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 5))
+    {
+      //ws.textAll("SLD@INFO:" + String(0));
     }
     
     
