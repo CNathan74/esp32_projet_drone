@@ -24,21 +24,29 @@ uint8_t ui_EtatBtn_LBR_CTRL = 0;
 uint8_t ui_EtatBtn_LBR_CTRL_Z1 = 0;
 
 uint8_t ui_NbBtnDejaAppui_LBR = 0;
+uint8_t ui_NbBtnDejaAppui_LBR_Z1 = 0;
 boolean b_BtnDejaAppui_LBR[3] = {false, false, false};
 //boolean b_BtnDejaAppui_LBR_Z1[3] = {false; false; false};
 const uint8_t ui_PinBtn_LBR[3] = {LBR_BTN_1, LBR_BTN_2, LBR_BTN_3};
+const uint8_t ui_PinBtn_LED_LBR[3] = {LBR_BTN_1_LED, LBR_BTN_2_LED, LBR_BTN_3_LED};
 
 uint8_t ui_NbBtnDejaAppui_DRT = 0;
 uint8_t ui_NbBtnDejaAppui_DRT_Z1 = 0;
 boolean b_BtnDejaAppui_DRT[3] = {false, false, false};
 
 uint16_t ui_NbTour_PMP = 0;
+uint16_t ui_NbTour_PMP_Z1 = 0;
 boolean b_EtatAnemo_PMP = false;
 boolean b_EtatAnemo_PMP_Z1 = false;
+boolean b_Changement_PMP = true;
 
 uint8_t ui_EtatBtn_DRT_CTRL = 0;
 uint8_t ui_EtatBtn_DRT_CTRL_Z1 = 0;
 
+const uint8_t ui_PinBtn_SLD[3] = {SLD_RETRO_1, SLD_RETRO_2, SLD_RETRO_3};
+boolean b_BtnEtat_SLD[3] = {false, false, false};
+boolean b_BtnEtat_SLD_Z1[3] = {false, false, false};
+boolean b_Changement_SLD = false;
 
 
 StateBtnLaby stateBtnLaby;
@@ -88,8 +96,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, uint32_t clien
            ui_NbBtnDejaAppui_DRT_Z1 = ui_NbBtnDejaAppui_DRT;
             for(i = 0; i < 3; i++)
             {
-              temp = (boolean)value.substring(i, i + 1).toInt();
-              if((b_BtnDejaAppui_DRT[i] == false) && (temp == true))
+              temp = value.substring(i, i + 1).toInt();
+              Serial.print(i);
+              Serial.print(" : ");
+              Serial.print(temp);
+              Serial.print(" - ");
+              Serial.println(temp == 1);
+              if((b_BtnDejaAppui_DRT[i] == false) && (temp == 1))
               {
                 if(i > 0)
                 {
@@ -97,18 +110,21 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, uint32_t clien
                   {
                     b_BtnDejaAppui_DRT[i] = true;
                     ui_NbBtnDejaAppui_DRT++;
+                    ws.textAll("DRT@INFO:" + String(ui_NbBtnDejaAppui_DRT));
                   }
                 }
                 else
                 {
                     b_BtnDejaAppui_DRT[i] = true;
                     ui_NbBtnDejaAppui_DRT++;
+                    ws.textAll("DRT@INFO:" + String(ui_NbBtnDejaAppui_DRT));
                 }  
               }
             }
         }
         if(io == "DRT_CTRL")
         {
+          ui_EtatBtn_DRT_CTRL_Z1 = ui_EtatBtn_DRT_CTRL;
           ui_EtatBtn_DRT_CTRL = value.toInt();
           if(ui_EtatBtn_DRT_CTRL_Z1 != ui_EtatBtn_DRT_CTRL)
           {
@@ -220,9 +236,14 @@ void setup(){
   pinMode(LBR_BTN_AR, INPUT_PULLUP);
     
   for(i = 0; i < 3; i++)
-  { pinMode(ui_PinBtn_LBR[i], INPUT_PULLUP);  }
+  { pinMode(ui_PinBtn_LBR[i], INPUT_PULLUP);
+    pinMode(ui_PinBtn_LED_LBR[i], OUTPUT);  }
   
-  pinMode(PMP_ANEMO, INPUT);
+  pinMode(PMP_ANEMO, INPUT_PULLUP);
+
+  pinMode(SLD_RETRO_1, INPUT_PULLUP);
+  pinMode(SLD_RETRO_2, INPUT_PULLUP);
+  pinMode(SLD_RETRO_3, INPUT_PULLUP);
 
 
 
@@ -240,75 +261,85 @@ void setup(){
 
 void loop() {
   uint8_t i;
-  
+  b_EtatAnemo_PMP_Z1 = b_EtatAnemo_PMP;
+  b_EtatAnemo_PMP = !digitalRead(PMP_ANEMO);
+  if((b_EtatAnemo_PMP == false) && (b_EtatAnemo_PMP_Z1 == true))
+  {
+    if(ui_NbTour_PMP < 65535)
+    {
+      ui_NbTour_PMP_Z1 = ui_NbTour_PMP;
+      ui_NbTour_PMP++;
+      b_Changement_PMP = true;
+    }
+  }
   if (TimerCompteurPrincipal >= FREQUENCE_TIMER_PRINCIPAL)      // toutes les 10ms
   {
     TimerCompteurPrincipal = TimerCompteurPrincipal - FREQUENCE_TIMER_PRINCIPAL;
     ui_EtatBtn_LBR_CTRL_Z1 = ui_EtatBtn_LBR_CTRL;
     ui_EtatBtn_LBR_CTRL = tache_ConvertBtnState_4(!digitalRead(LBR_BTN_GAUCHE), !digitalRead(LBR_BTN_DROITE), !digitalRead(LBR_BTN_AV), !digitalRead(LBR_BTN_AR));
 
-   
-
-    
-
     for(i = 0; i < 3; i++)
     {
       //b_BtnDejaAppui_LBR_Z1[i] = b_BtnDejaAppui_LBR[i];
       if((b_BtnDejaAppui_LBR[i] == false) && ((!digitalRead(ui_PinBtn_LBR[i])) == true))
       {
+        Serial.print(i);
         b_BtnDejaAppui_LBR[i] = true;
         ui_NbBtnDejaAppui_LBR++;        
       }
     }
 
-    b_EtatAnemo_PMP_Z1 = b_EtatAnemo_PMP;
-    b_EtatAnemo_PMP = digitalRead(PMP_ANEMO);
-    if((b_EtatAnemo_PMP == false) && (b_EtatAnemo_PMP_Z1 == true))
-    {
-      if(ui_NbTour_PMP < 65535)
-      {
-        ui_NbTour_PMP++;
-      }
-      
-    }
+    
     //Serial.println(stateBtnLaby.ui_StateBtnLaby);
   
     ws.cleanupClients();    
-    if(ui_Sequence == 0)
+    if(ui_EtatBtn_LBR_CTRL_Z1 != ui_EtatBtn_LBR_CTRL)
     {
-      //ws.textAll("LBR@CTRL:" + String(ui_EtatBtn_LBR_CTRL));
+      ws.textAll("LBR@CTRL:" + String(ui_EtatBtn_LBR_CTRL));
     }
-    if(ui_Sequence == (NB_PERIODE_SEQUENCEUR / 6))
+    else if(ui_EtatBtn_LBR_CTRL != 0)
     {
-      //ws.textAll("LBR@INFO:" + String(ui_NbBtnDejaAppui_LBR));
-    }
-    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 2))
-    {
-      //ws.textAll("PMP@INFO:" + String(ui_NbTour_PMP));
-    }
-    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 3))
-    {
-      ui_EtatBtn_DRT_CTRL_Z1 = ui_EtatBtn_DRT_CTRL;
-      if(ui_EtatBtn_DRT_CTRL_Z1 != ui_EtatBtn_DRT_CTRL)
+      if(ui_Sequence == 0)
       {
-        ws.textAll("DRT@CTRL:" + String(ui_EtatBtn_DRT_CTRL));
-      }
-      else if(ui_EtatBtn_DRT_CTRL != 0)
-      {
-        ws.textAll("DRT@CTRL:" + String(ui_EtatBtn_DRT_CTRL));
+        ws.textAll("LBR@CTRL:" + String(ui_EtatBtn_LBR_CTRL));
       }
     }
+
+    if(ui_NbBtnDejaAppui_LBR != ui_NbBtnDejaAppui_LBR_Z1)
+    {
+      ui_NbBtnDejaAppui_LBR_Z1 = ui_NbBtnDejaAppui_LBR;
+      ws.textAll("LBR@INFO:" + String(ui_NbBtnDejaAppui_LBR));
+    }
+
+    if((ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 2)) && (b_Changement_PMP == true))
+     {
+        b_Changement_PMP = false;
+        ws.textAll("PMP@INFO:" + String(ui_NbTour_PMP));
+    }
+
+
     
-    if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 4))
-    {
-      if(ui_NbBtnDejaAppui_DRT_Z1 != ui_NbBtnDejaAppui_DRT)
-      {
-        ws.textAll("DRT@INFO:" + String(ui_NbBtnDejaAppui_DRT));
-      }
-    }
     if(ui_Sequence == ((NB_PERIODE_SEQUENCEUR / 6) * 5))
     {
-      //ws.textAll("SLD@INFO:" + String(0));
+      b_Changement_SLD = false;
+      for(i = 0; i < 3; i++)
+      {
+        b_BtnEtat_SLD_Z1[i] = b_BtnEtat_SLD[i];
+        b_BtnEtat_SLD[i] = !digitalRead(ui_PinBtn_SLD[i]);
+        if(b_BtnEtat_SLD_Z1[i] != b_BtnEtat_SLD[i])
+        {
+          b_Changement_SLD = true;
+        }
+      }
+      if(b_Changement_SLD == true)
+      {
+        ws.textAll("SLD@INFO:" + String(b_BtnEtat_SLD[0]) + String(b_BtnEtat_SLD[1]) + String(b_BtnEtat_SLD[2]));
+      }
+    }
+
+    for(i = 0; i < 3; i++)
+    {
+      digitalWrite(ui_PinBtn_LED_LBR[i], b_BtnDejaAppui_LBR[i]);
     }
     
     
